@@ -5,15 +5,10 @@ import { outputRouteForNote, routeForNote } from './slug.js'
 export async function scanVaults(config) {
   const notes = []
   const outDir = path.resolve(config.outDir)
-  const generatedRelativeRoot = normalizeGeneratedRelativeRoot(config.outputRouteBase)
 
   for (const vault of config.vaults) {
     const root = path.resolve(vault.root)
-    const files = await walk(root, {
-      root,
-      outDir,
-      generatedRelativeRoot
-    })
+    const files = await walk(root, { outDir })
 
     for (const file of files) {
       if (!file.endsWith('.md')) continue
@@ -87,7 +82,6 @@ async function walk(dir, options) {
 
     const fullPath = path.join(dir, entry.name)
     if (isInsideOrEqual(fullPath, options.outDir)) continue
-    if (isGeneratedOutputPath(fullPath, options)) continue
 
     if (entry.isDirectory()) {
       files.push(...await walk(fullPath, options))
@@ -120,13 +114,3 @@ function isInsideOrEqual(candidate, parent) {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
-function normalizeGeneratedRelativeRoot(outputRouteBase) {
-  return String(outputRouteBase ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-function isGeneratedOutputPath(candidate, options) {
-  if (!options.generatedRelativeRoot) return false
-
-  const relative = slash(path.relative(options.root, candidate))
-  return relative === options.generatedRelativeRoot || relative.startsWith(`${options.generatedRelativeRoot}/`)
-}

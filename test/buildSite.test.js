@@ -119,6 +119,69 @@ test('uses generated route prefix when outDir is inside docs', async () => {
   }
 })
 
+test('does not skip notes in a vault subfolder that happens to match outputRouteBase', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
+  const cwd = process.cwd()
+
+  process.chdir(tmp)
+
+  try {
+    const vault = path.join(tmp, 'vault')
+
+    await mkdir(path.join(vault, 'generated'), { recursive: true })
+    await writeFile(path.join(vault, 'Alpha.md'), 'Alpha links to [[Beta]].\n', 'utf8')
+    await writeFile(path.join(vault, 'generated', 'Beta.md'), '# Beta\n', 'utf8')
+
+    await buildSite({
+      vaults: [{ name: 'main', root: vault, routeBase: '/' }],
+      outDir: 'docs/generated',
+      brokenLinks: 'route'
+    })
+
+    const alpha = await readFile(path.join(tmp, 'docs/generated/alpha.md'), 'utf8')
+    const beta = await readFile(path.join(tmp, 'docs/generated/generated/beta.md'), 'utf8')
+
+    assert.match(alpha, /\[Beta\]\(\/generated\/generated\/beta\)/)
+    assert.match(beta, /- \[Alpha\]\(\/generated\/alpha\)/)
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
+test('multiple vaults with outDir nested under docsDir use correct route prefix', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
+  const cwd = process.cwd()
+
+  process.chdir(tmp)
+
+  try {
+    const personal = path.join(tmp, 'personal')
+    const work = path.join(tmp, 'work')
+
+    await mkdir(personal, { recursive: true })
+    await mkdir(work, { recursive: true })
+    await writeFile(path.join(personal, 'Alpha.md'), 'Alpha links to [[Beta]].\n', 'utf8')
+    await writeFile(path.join(work, 'Beta.md'), '# Beta\n', 'utf8')
+
+    await buildSite({
+      vaults: [
+        { name: 'personal', root: personal, routeBase: '/personal' },
+        { name: 'work', root: work, routeBase: '/work' }
+      ],
+      outDir: 'docs/generated',
+      brokenLinks: 'route'
+    })
+
+    const alpha = await readFile(path.join(tmp, 'docs/generated/personal/alpha.md'), 'utf8')
+    const beta = await readFile(path.join(tmp, 'docs/generated/work/beta.md'), 'utf8')
+
+    assert.match(alpha, /\[Beta\]\(\/generated\/work\/beta\)/)
+    assert.match(beta, /- \[Alpha\]\(\/generated\/personal\/alpha\)/)
+  } finally {
+    process.chdir(cwd)
+  }
+})
+
 test('does not scan its own generated output when vault root contains outDir', async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
   const cwd = process.cwd()
