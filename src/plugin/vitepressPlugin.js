@@ -3,6 +3,7 @@ import { buildSite } from '../core/buildSite.js'
 export function obsidian2vitepress(config) {
   return {
     name: 'obsidian2vitepress',
+    enforce: 'pre',
     async buildStart() {
       await buildSite(config)
     },
@@ -16,6 +17,8 @@ export function obsidian2vitepress(config) {
       const rebuild = async (file) => {
         if (!file.endsWith('.md')) return
         await buildSite(config)
+        server.moduleGraph.invalidateAll()
+        server.ws.send({ type: 'full-reload' })
       }
 
       server.watcher.on('add', rebuild)

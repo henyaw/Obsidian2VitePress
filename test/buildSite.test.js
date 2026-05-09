@@ -213,3 +213,42 @@ test('does not scan its own generated output when vault root contains outDir', a
     process.chdir(cwd)
   }
 })
+
+test('normalises malformed fenced code block closing fences', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
+  const vault = path.join(tmp, 'vault')
+  const outDir = path.join(tmp, 'docs')
+
+  await mkdir(vault, { recursive: true })
+  await writeFile(path.join(vault, 'Note.md'), [
+    '# Note',
+    '```dataview',
+    'LIST FROM #daily',
+    '```by',
+    'trailing paragraph'
+  ].join('\n'), 'utf8')
+
+  await buildSite({ vaults: [{ name: 'main', root: vault }], outDir })
+
+  const note = await readFile(path.join(outDir, 'note.md'), 'utf8')
+  assert.match(note, /trailing paragraph/)
+})
+
+test('converts all standard Obsidian callout types without throwing', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
+  const vault = path.join(tmp, 'vault')
+  const outDir = path.join(tmp, 'docs')
+  const extraTypes = ['abstract', 'summary', 'tldr', 'hint', 'important', 'check', 'done',
+    'help', 'faq', 'caution', 'attention', 'fail', 'missing', 'error', 'cite', 'unknown-type']
+
+  await mkdir(vault, { recursive: true })
+  const content = extraTypes.map((t) => `> [!${t}]\n> content\n`).join('\n')
+  await writeFile(path.join(vault, 'Callouts.md'), content, 'utf8')
+
+  await assert.doesNotReject(() =>
+    buildSite({ vaults: [{ name: 'main', root: vault }], outDir })
+  )
+
+  const out = await readFile(path.join(outDir, 'callouts.md'), 'utf8')
+  assert.match(out, /:::/)
+})

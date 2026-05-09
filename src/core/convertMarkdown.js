@@ -5,6 +5,7 @@ export function convertMarkdown(note, context) {
   const { index, config, backlinks } = context
   let markdown = note.content
 
+  markdown = fixFencedCodeBlocks(markdown)
   markdown = convertCallouts(markdown)
   markdown = convertWikilinks(markdown, note, index, config)
 
@@ -109,25 +110,64 @@ function convertCallouts(markdown) {
 function calloutType(type) {
   const mapping = {
     note: 'info',
+    abstract: 'info',
+    summary: 'info',
+    tldr: 'info',
     info: 'info',
     todo: 'info',
     tip: 'tip',
+    hint: 'tip',
+    important: 'tip',
     success: 'tip',
+    check: 'tip',
+    done: 'tip',
     question: 'details',
+    help: 'details',
+    faq: 'details',
     warning: 'warning',
+    caution: 'warning',
+    attention: 'warning',
     failure: 'danger',
+    fail: 'danger',
+    missing: 'danger',
     danger: 'danger',
+    error: 'danger',
     bug: 'danger',
     example: 'details',
-    quote: 'details'
+    quote: 'details',
+    cite: 'details'
   }
 
-  const normalized = type.toLowerCase()
-  if (!mapping[normalized]) {
-    throw new Error(`Unsupported Obsidian callout type: ${type}`)
+  return mapping[type.toLowerCase()] ?? 'info'
+}
+
+function fixFencedCodeBlocks(markdown) {
+  const lines = markdown.split('\n')
+  const output = []
+  let fenceChar = null
+  let fenceLen = 0
+
+  for (const line of lines) {
+    const match = line.match(/^(`{3,}|~{3,})/)
+
+    if (fenceChar === null) {
+      if (match) {
+        fenceChar = match[0][0]
+        fenceLen = match[0].length
+      }
+      output.push(line)
+    } else {
+      if (match && match[0][0] === fenceChar && match[0].length >= fenceLen) {
+        output.push(fenceChar.repeat(fenceLen))
+        fenceChar = null
+        fenceLen = 0
+      } else {
+        output.push(line)
+      }
+    }
   }
 
-  return mapping[normalized]
+  return output.join('\n')
 }
 
 function appendBacklinks(markdown, note, backlinks, config) {
