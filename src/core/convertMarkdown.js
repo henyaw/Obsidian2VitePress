@@ -57,6 +57,10 @@ function convertWikilinks(markdown, note, index, config) {
       return convertEmbed(link, resolved, note)
     }
 
+    if (!resolved.exists) {
+      return `<a href="${escapeHtml(resolved.route)}" class="obsidian-missing-note">${escapeHtml(resolved.label)}</a>`
+    }
+
     return `[${escapeMarkdownLinkText(resolved.label)}](${resolved.route})`
   })
 }

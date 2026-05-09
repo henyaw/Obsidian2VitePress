@@ -27,7 +27,7 @@ test('converts wikilinks and appends backlinks', async () => {
   assert.match(beta, /- \[Alpha\]\(\/alpha\)/)
 })
 
-test('routes uncreated wikilinks to missing vitepress documents', async () => {
+test('renders broken wikilinks as html anchor tags to avoid rollup import failures', async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
   const vault = path.join(tmp, 'vault')
   const outDir = path.join(tmp, 'docs')
@@ -42,7 +42,8 @@ test('routes uncreated wikilinks to missing vitepress documents', async () => {
 
   const alpha = await readFile(path.join(outDir, 'alpha.md'), 'utf8')
 
-  assert.match(alpha, /\[Missing Note\]\(\/missing-note\)/)
+  assert.match(alpha, /<a href="\/missing-note" class="obsidian-missing-note">Missing Note<\/a>/)
+  assert.doesNotMatch(alpha, /\[Missing Note\]\(/)
 })
 
 test('supports multiple vault route bases for backlinks', async () => {
@@ -112,7 +113,7 @@ test('uses generated route prefix when outDir is inside docs', async () => {
     const beta = await readFile(path.join(tmp, 'docs/generated/beta.md'), 'utf8')
 
     assert.match(alpha, /\[Beta\]\(\/generated\/beta\)/)
-    assert.match(alpha, /\[Missing Note\]\(\/generated\/missing-note\)/)
+    assert.match(alpha, /<a href="\/generated\/missing-note" class="obsidian-missing-note">Missing Note<\/a>/)
     assert.match(beta, /- \[Alpha\]\(\/generated\/alpha\)/)
   } finally {
     process.chdir(cwd)
