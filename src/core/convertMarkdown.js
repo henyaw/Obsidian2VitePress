@@ -74,7 +74,7 @@ function convertEmbed(link, resolved, sourceNote, assetRoutes) {
   }
 
   if (!resolved.exists) {
-    return `[${escapeMarkdownLinkText(resolved.label)}](${resolved.route})`
+    return `<a href="${escapeHtml(resolved.route)}" class="obsidian-missing-note">${escapeHtml(resolved.label)}</a>`
   }
 
   return `<div class="obsidian-note-embed" data-source="${escapeHtml(sourceNote.relativePath)}"><a href="${resolved.route}">${escapeHtml(resolved.label)}</a></div>`

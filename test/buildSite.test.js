@@ -33,7 +33,7 @@ test('renders broken wikilinks as html anchor tags to avoid rollup import failur
   const outDir = path.join(tmp, 'docs')
 
   await mkdir(vault, { recursive: true })
-  await writeFile(path.join(vault, 'Alpha.md'), 'Alpha links to [[Missing Note]].\n', 'utf8')
+  await writeFile(path.join(vault, 'Alpha.md'), 'Alpha links to [[Missing Note]] and embeds ![[Missing Embed]].\n', 'utf8')
 
   await buildSite({
     vaults: [{ name: 'main', root: vault }],
@@ -43,7 +43,9 @@ test('renders broken wikilinks as html anchor tags to avoid rollup import failur
   const alpha = await readFile(path.join(outDir, 'alpha.md'), 'utf8')
 
   assert.match(alpha, /<a href="\/missing-note" class="obsidian-missing-note">Missing Note<\/a>/)
+  assert.match(alpha, /<a href="\/missing-embed" class="obsidian-missing-note">Missing Embed<\/a>/)
   assert.doesNotMatch(alpha, /\[Missing Note\]\(/)
+  assert.doesNotMatch(alpha, /\[Missing Embed\]\(/)
 })
 
 test('supports multiple vault route bases for backlinks', async () => {
