@@ -29,7 +29,15 @@ export function findWikilinks(markdown) {
 }
 
 export function resolveWikiLink(link, sourceNote, index, config) {
-  const matches = index.byTarget.get(normalizeTarget(link.target)) ?? []
+  let matches = index.byTarget.get(normalizeTarget(link.target)) ?? []
+
+  if (matches.length === 0) {
+    const segments = link.target.replace(/\\/g, '/').split('/')
+    const basename = segments[segments.length - 1]
+    if (basename && basename !== link.target) {
+      matches = index.byTarget.get(normalizeTarget(basename)) ?? []
+    }
+  }
 
   if (matches.length > 1) {
     throw new Error(`Ambiguous wikilink [[${link.target}]] in ${sourceNote.relativePath}. Matches: ${matches.map((note) => note.relativePath).join(', ')}`)

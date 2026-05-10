@@ -4,38 +4,30 @@ import { outputRouteForNote, routeForNote } from './slug.js'
 
 export async function scanVaults(config) {
   const notes = []
+  const assets = []
   const outDir = path.resolve(config.outDir)
-  const generatedRelativeRoot = normalizeGeneratedRelativeRoot(config.outputRouteBase)
 
   for (const vault of config.vaults) {
     const root = path.resolve(vault.root)
-    const files = await walk(root, {
-      root,
-      outDir,
-      generatedRelativeRoot
-    })
+    const files = await walk(root, { outDir })
 
     for (const file of files) {
-      if (!file.endsWith('.md')) continue
-
       const relativePath = slash(path.relative(root, file))
-      if (!isIncluded(relativePath, vault)) continue
 
-      const content = await fs.readFile(file, 'utf8')
-      const basename = path.basename(relativePath, '.md')
-      notes.push({
-        vault,
-        root,
-        absolutePath: file,
-        relativePath,
-        basename,
-        content
-      })
+      if (file.endsWith('.md')) {
+        if (!isIncluded(relativePath, vault)) continue
+        const content = await fs.readFile(file, 'utf8')
+        const basename = path.basename(relativePath, '.md')
+        notes.push({ vault, root, absolutePath: file, relativePath, basename, content })
+      } else if (isAssetFile(file)) {
+        assets.push({ vault, root, absolutePath: file, relativePath, basename: path.basename(file) })
+      }
     }
   }
 
   const index = createNoteIndex(notes, config)
-  return { notes, index }
+  const assetIndex = createAssetIndex(assets)
+  return { notes, assets, index, assetIndex }
 }
 
 function createNoteIndex(notes, config) {
@@ -59,6 +51,18 @@ function createNoteIndex(notes, config) {
   }
 
   return { byRoute, byTarget }
+}
+
+function createAssetIndex(assets) {
+  const byBasename = new Map()
+  for (const asset of assets) {
+    byBasename.set(asset.basename.toLowerCase(), asset)
+  }
+  return { byBasename }
+}
+
+function isAssetFile(file) {
+  return /\.(png|jpe?g|gif|webp|svg|pdf|mp3|mp4|wav|mov)$/i.test(file)
 }
 
 function addTarget(map, target, note) {
@@ -87,7 +91,6 @@ async function walk(dir, options) {
 
     const fullPath = path.join(dir, entry.name)
     if (isInsideOrEqual(fullPath, options.outDir)) continue
-    if (isGeneratedOutputPath(fullPath, options)) continue
 
     if (entry.isDirectory()) {
       files.push(...await walk(fullPath, options))
@@ -120,13 +123,3 @@ function isInsideOrEqual(candidate, parent) {
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))
 }
 
-function normalizeGeneratedRelativeRoot(outputRouteBase) {
-  return String(outputRouteBase ?? '').replace(/^\/+|\/+$/g, '')
-}
-
-function isGeneratedOutputPath(candidate, options) {
-  if (!options.generatedRelativeRoot) return false
-
-  const relative = slash(path.relative(options.root, candidate))
-  return relative === options.generatedRelativeRoot || relative.startsWith(`${options.generatedRelativeRoot}/`)
-}

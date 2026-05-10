@@ -2,11 +2,12 @@ import path from 'node:path'
 import { findWikilinks, resolveWikiLink } from './links.js'
 
 export function convertMarkdown(note, context) {
-  const { index, config, backlinks } = context
+  const { index, config, backlinks, assetRoutes } = context
   let markdown = note.content
 
+  markdown = fixFencedCodeBlocks(markdown)
   markdown = convertCallouts(markdown)
-  markdown = convertWikilinks(markdown, note, index, config)
+  markdown = convertWikilinks(markdown, note, index, config, assetRoutes)
 
   if (config.backlinks?.enabled) {
     markdown = appendBacklinks(markdown, note, backlinks, config)
@@ -41,7 +42,7 @@ export function collectBacklinks(notes, index, config) {
   return backlinks
 }
 
-function convertWikilinks(markdown, note, index, config) {
+function convertWikilinks(markdown, note, index, config, assetRoutes) {
   return markdown.replace(/(!)?\[\[([^\]\n]+)\]\]/g, (raw, embedMarker, rawTarget) => {
     const link = {
       raw,
@@ -53,21 +54,27 @@ function convertWikilinks(markdown, note, index, config) {
     if (resolved.preserve) return raw
 
     if (link.isEmbed) {
-      return convertEmbed(link, resolved, note)
+      return convertEmbed(link, resolved, note, assetRoutes)
+    }
+
+    if (!resolved.exists) {
+      return `<a href="${escapeHtml(resolved.route)}" class="obsidian-missing-note">${escapeHtml(resolved.label)}</a>`
     }
 
     return `[${escapeMarkdownLinkText(resolved.label)}](${resolved.route})`
   })
 }
 
-function convertEmbed(link, resolved, sourceNote) {
+function convertEmbed(link, resolved, sourceNote, assetRoutes) {
   if (isAssetTarget(link.target)) {
-    const label = path.basename(link.target)
-    return `![${escapeMarkdownLinkText(link.alias || label)}](${resolved.route})`
+    const basename = path.basename(link.target)
+    const route = assetRoutes?.get(basename.toLowerCase())
+    if (!route) return ''
+    return `<img src="${escapeHtml(route)}" alt="${escapeHtml(link.alias || basename)}" />`
   }
 
   if (!resolved.exists) {
-    return `[${escapeMarkdownLinkText(resolved.label)}](${resolved.route})`
+    return `<a href="${escapeHtml(resolved.route)}" class="obsidian-missing-note">${escapeHtml(resolved.label)}</a>`
   }
 
   return `<div class="obsidian-note-embed" data-source="${escapeHtml(sourceNote.relativePath)}"><a href="${resolved.route}">${escapeHtml(resolved.label)}</a></div>`
@@ -109,25 +116,64 @@ function convertCallouts(markdown) {
 function calloutType(type) {
   const mapping = {
     note: 'info',
+    abstract: 'info',
+    summary: 'info',
+    tldr: 'info',
     info: 'info',
     todo: 'info',
     tip: 'tip',
+    hint: 'tip',
+    important: 'tip',
     success: 'tip',
+    check: 'tip',
+    done: 'tip',
     question: 'details',
+    help: 'details',
+    faq: 'details',
     warning: 'warning',
+    caution: 'warning',
+    attention: 'warning',
     failure: 'danger',
+    fail: 'danger',
+    missing: 'danger',
     danger: 'danger',
+    error: 'danger',
     bug: 'danger',
     example: 'details',
-    quote: 'details'
+    quote: 'details',
+    cite: 'details'
   }
 
-  const normalized = type.toLowerCase()
-  if (!mapping[normalized]) {
-    throw new Error(`Unsupported Obsidian callout type: ${type}`)
+  return mapping[type.toLowerCase()] ?? 'info'
+}
+
+function fixFencedCodeBlocks(markdown) {
+  const lines = markdown.split('\n')
+  const output = []
+  let fenceChar = null
+  let fenceLen = 0
+
+  for (const line of lines) {
+    const match = line.match(/^(`{3,}|~{3,})/)
+
+    if (fenceChar === null) {
+      if (match) {
+        fenceChar = match[0][0]
+        fenceLen = match[0].length
+      }
+      output.push(line)
+    } else {
+      if (match && match[0][0] === fenceChar && match[0].length >= fenceLen) {
+        output.push(fenceChar.repeat(fenceLen))
+        fenceChar = null
+        fenceLen = 0
+      } else {
+        output.push(line)
+      }
+    }
   }
 
-  return mapping[normalized]
+  return output.join('\n')
 }
 
 function appendBacklinks(markdown, note, backlinks, config) {
