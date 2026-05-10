@@ -2,12 +2,12 @@ import path from 'node:path'
 import { findWikilinks, resolveWikiLink } from './links.js'
 
 export function convertMarkdown(note, context) {
-  const { index, config, backlinks } = context
+  const { index, config, backlinks, assetRoutes } = context
   let markdown = note.content
 
   markdown = fixFencedCodeBlocks(markdown)
   markdown = convertCallouts(markdown)
-  markdown = convertWikilinks(markdown, note, index, config)
+  markdown = convertWikilinks(markdown, note, index, config, assetRoutes)
 
   if (config.backlinks?.enabled) {
     markdown = appendBacklinks(markdown, note, backlinks, config)
@@ -42,7 +42,7 @@ export function collectBacklinks(notes, index, config) {
   return backlinks
 }
 
-function convertWikilinks(markdown, note, index, config) {
+function convertWikilinks(markdown, note, index, config, assetRoutes) {
   return markdown.replace(/(!)?\[\[([^\]\n]+)\]\]/g, (raw, embedMarker, rawTarget) => {
     const link = {
       raw,
@@ -54,7 +54,7 @@ function convertWikilinks(markdown, note, index, config) {
     if (resolved.preserve) return raw
 
     if (link.isEmbed) {
-      return convertEmbed(link, resolved, note)
+      return convertEmbed(link, resolved, note, assetRoutes)
     }
 
     if (!resolved.exists) {
@@ -65,10 +65,12 @@ function convertWikilinks(markdown, note, index, config) {
   })
 }
 
-function convertEmbed(link, resolved, sourceNote) {
+function convertEmbed(link, resolved, sourceNote, assetRoutes) {
   if (isAssetTarget(link.target)) {
-    const label = path.basename(link.target)
-    return `![${escapeMarkdownLinkText(link.alias || label)}](${resolved.route})`
+    const basename = path.basename(link.target)
+    const route = assetRoutes?.get(basename.toLowerCase())
+    if (!route) return ''
+    return `<img src="${escapeHtml(route)}" alt="${escapeHtml(link.alias || basename)}" />`
   }
 
   if (!resolved.exists) {

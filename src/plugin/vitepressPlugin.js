@@ -1,9 +1,23 @@
 import { buildSite } from '../core/buildSite.js'
 
+const assetExtPattern = /\.(png|jpe?g|gif|webp|svg|pdf|mp3|mp4|wav|mov)$/i
+
 export function obsidian2vitepress(config) {
   return {
     name: 'obsidian2vitepress',
     enforce: 'pre',
+    config() {
+      return {
+        build: {
+          rollupOptions: {
+            onwarn(warning, defaultHandler) {
+              if (warning.code === 'UNRESOLVED_IMPORT' && assetExtPattern.test(warning.exporter ?? '')) return
+              defaultHandler(warning)
+            }
+          }
+        }
+      }
+    },
     async buildStart() {
       await buildSite(config)
     },

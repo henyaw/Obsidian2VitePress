@@ -215,6 +215,30 @@ test('does not scan its own generated output when vault root contains outDir', a
   }
 })
 
+test('resolves wikilinks by basename when path hint does not match the file location', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
+  const vault = path.join(tmp, 'vault')
+  const outDir = path.join(tmp, 'docs')
+
+  await mkdir(path.join(vault, 'may'), { recursive: true })
+  await writeFile(path.join(vault, 'may', '06-05-2026.md'), '# Daily\n', 'utf8')
+  await writeFile(
+    path.join(vault, 'Today.md'),
+    'Yesterday: [[daily/2026/May/06-05-2026|Yesterday]]\n',
+    'utf8'
+  )
+
+  await buildSite({
+    vaults: [{ name: 'journal', root: vault, routeBase: '/journal' }],
+    outDir
+  })
+
+  const today = await readFile(path.join(outDir, 'journal/today.md'), 'utf8')
+  assert.match(today, /\[Yesterday\]\(\/journal\/may\/06-05-2026\)/)
+  assert.doesNotMatch(today, /daily\/2026/)
+  assert.doesNotMatch(today, /obsidian-missing-note/)
+})
+
 test('normalises malformed fenced code block closing fences', async () => {
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'o2vp-'))
   const vault = path.join(tmp, 'vault')
