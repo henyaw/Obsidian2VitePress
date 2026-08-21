@@ -1,15 +1,18 @@
 # Obsidian2VitePress
 
-Local VitePress plugin for copying Obsidian vault notes into VitePress-compatible Markdown.
+A local VitePress plugin that converts and imports Obsidian vault notes into VitePress-compatible Markdown.
 
-Current scaffold supports:
+## Features
 
-- Multiple vaults.
-- VitePress-style route generation.
-- Wikilinks.
-- Uncreated wikilinks as normal links to missing VitePress routes.
-- Backlinks appended to generated target notes.
-- Basic Obsidian callout conversion to VitePress containers.
+- **Multi-Vault Support:** Import notes from multiple Obsidian vaults simultaneously.
+- **VitePress Route Generation:** Automatic path mapping for generated Markdown files.
+- **Selective Publishing (`filterByPublished`):** Only process notes marked with `published: true` in frontmatter.
+- **Custom Folder Hierarchy (`useParentProperty`):** Override directory structures using the `parent` frontmatter property.
+- **Ordered Filenames (`useOrderProperty`):** Prefix filenames and routes using a numerical `order` frontmatter property.
+- **Homepage Routing (`useHomeRewrite`):** Automatically rewrite notes with `layout: home` to `index.md`.
+- **Wikilink Resolution:** Parse standard `[[Wikilinks]]` and handle links to uncreated notes seamlessly.
+- **Backlink Generation:** Append backlink lists automatically to referenced target pages.
+- **Callout Support:** Convert Obsidian `> [!NOTE]` callout syntax into standard VitePress custom containers.
 
 ## Usage
 
@@ -30,49 +33,13 @@ export default defineConfig({
           }
         ],
         outDir: 'docs/generated',
-        brokenLinks: 'route'
+        brokenLinks: 'route',
+        // Optional feature flags
+        filterByPublished: true,  // Include only notes where `published: true`
+        useParentProperty: true,  // Route files based on `parent:` frontmatter
+        useOrderProperty: true,   // Prefix file slugs with numerical `order:` frontmatter
+        useHomeRewrite: true     // Save notes with `layout: home` as `index.md`
       })
     ]
   }
 })
-```
-
-## Broken Links
-
-Default behavior is:
-
-```js
-brokenLinks: 'route'
-```
-
-That means `[[Missing Note]]` becomes:
-
-```md
-[Missing Note](/missing-note)
-```
-
-No generated file is created for the missing note. VitePress or the deployed site handles that route.
-
-Other policies:
-
-- `fail`: throw during conversion.
-- `warn`: print a warning and render the expected route.
-- `preserve`: leave the original Obsidian wikilink text.
-
-## Backlinks
-
-Backlinks are enabled by default. If `Alpha.md` links to `[[Beta]]`, the generated `beta.md` receives:
-
-```md
-## Backlinks
-
-- [Alpha](/alpha)
-```
-
-Only existing target notes receive backlink sections.
-
-## Test
-
-```sh
-npm test
-```

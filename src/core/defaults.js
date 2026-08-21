@@ -19,7 +19,11 @@ export const defaultConfig = {
   backlinks: {
     enabled: true,
     heading: 'Backlinks'
-  }
+  },
+  filterByPublished: false,
+  useParentProperty: false,
+  useOrderProperty: false,
+  useHomeRewrite: false
 }
 
 export function resolveConfig(config) {
@@ -49,7 +53,12 @@ export function resolveConfig(config) {
   }
 
   resolved.outputRouteBase = config.outputRouteBase ?? deriveOutputRouteBase(resolved.outDir, resolved.docsDir)
-  return resolved
+  return {
+    ...resolved,
+    useParentProperty: config.useParentProperty ?? defaultConfig.useParentProperty,
+    useOrderProperty: config.useOrderProperty ?? defaultConfig.useOrderProperty,
+    useHomeRewrite: config.useHomeRewrite ?? defaultConfig.useHomeRewrite
+  }
 }
 
 function deriveOutputRouteBase(outDir, docsDir) {
