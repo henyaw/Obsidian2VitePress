@@ -56,9 +56,23 @@ const walk = async (dir, options) => {
   const files = [];
 
   for (const entry of entries) {
-    if (entry.name === ".obsidian" || entry.name === ".git") continue;
+    // Skip hidden/system directories, git, and Obsidian trash
+    if (
+      entry.name === ".obsidian" ||
+      entry.name === ".git" ||
+      entry.name === ".trash"
+    )
+      continue;
 
     const fullPath = path.join(dir, entry.name);
+
+    // Also catch any nested .trash directories or paths containing .trash/
+    if (
+      slash(fullPath).includes("/.trash/") ||
+      slash(fullPath).endsWith("/.trash")
+    )
+      continue;
+
     if (
       fullPath === options.outDir ||
       fullPath.startsWith(`${options.outDir}/`)
